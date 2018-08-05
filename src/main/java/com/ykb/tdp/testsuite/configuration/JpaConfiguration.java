@@ -67,10 +67,13 @@ public class JpaConfiguration {
         factoryBean.setPackagesToScan(new String[] { "com.ykb.tdp.testsuite.model" });
         factoryBean.setJpaVendorAdapter(jpaVendorAdapter());
         factoryBean.setJpaProperties(jpaProperties());
+        String[] mappingResources = environment.getProperty("datasource.tdptestapp.mapping-resources", String[].class);
+        if(mappingResources != null && mappingResources.length > 0 && StringUtils.hasText(mappingResources[0])) {
+        	factoryBean.setMappingResources(mappingResources);
+        }
         return factoryBean;
     }
  
-
     @Bean
     public JpaVendorAdapter jpaVendorAdapter() {
         HibernateJpaVendorAdapter hibernateJpaVendorAdapter = new HibernateJpaVendorAdapter();
