@@ -89,6 +89,9 @@ public class JpaConfiguration {
         if(!StringUtils.isEmpty(environment.getRequiredProperty("datasource.tdptestapp.defaultSchema"))){
             properties.put("hibernate.default_schema", environment.getRequiredProperty("datasource.tdptestapp.defaultSchema"));
         }
+        if(!StringUtils.isEmpty(environment.getProperty("datasource.tdptestapp.hibernate.import_files"))){
+            properties.put("hibernate.hbm2ddl.import_files", environment.getProperty("datasource.tdptestapp.hibernate.import_files"));
+        }
         return properties;
     }
  
