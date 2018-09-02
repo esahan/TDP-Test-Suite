@@ -2,6 +2,8 @@ server:
   port: 3030
   servlet:
     context-path: /SpringBootCRUDApp
+spring:
+  mandatory-file-encoding: UTF-8
 ---
 spring:
   profiles: prod
@@ -64,7 +66,11 @@ client-oauth:
  user: ege
 ---
 spring:
-  profiles: alper    
+  profiles: alper
+server:
+  error:
+    include-exception: true
+    include-stacktrace: always
 datasource:
   tdptestapp:
     url: jdbc:oracle:thin:@localhost:1521:XE
@@ -88,7 +94,7 @@ logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-  file: /log/application.log    
+  file: log/application.log    
    
 client-oauth:
  secret: egepwd 

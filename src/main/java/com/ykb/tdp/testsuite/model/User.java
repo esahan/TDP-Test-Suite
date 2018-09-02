@@ -16,7 +16,7 @@ public class User {
 	@GeneratedValue(strategy= GenerationType.IDENTITY)
 	private long id;
 	@NotEmpty
-    @Column(name="NAME", nullable=false)
+	@Column(name="NAME", nullable=false, unique=true)
 	private String name;
 	@NotEmpty
     @Column(name="PASSWORD", nullable=false)

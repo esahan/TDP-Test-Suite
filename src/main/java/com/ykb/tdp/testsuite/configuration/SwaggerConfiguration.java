@@ -8,6 +8,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import com.google.common.base.Predicate;
+import com.google.common.base.Predicates;
+import com.ykb.tdp.testsuite.security.SecuredPaths;
+
 import springfox.documentation.builders.ApiInfoBuilder;
 import springfox.documentation.builders.OAuthBuilder;
 import springfox.documentation.builders.PathSelectors;
@@ -40,6 +44,15 @@ public class SwaggerConfiguration {
 	@Value("${server.servlet.context-path}")
 	private String contextPath;
 
+	@Value("${info.app.title}")
+	private String applicationTitle;
+
+	@Value("${info.app.description}")
+	private String applicationDescription;
+
+	@Value("${info.app.version}")
+	private String version;
+
 	private AuthorizationScope[] scopes = {
 			new AuthorizationScope("read", "for reading stuff"),
 			new AuthorizationScope("write", "for writing stuff"),
@@ -54,7 +67,9 @@ public class SwaggerConfiguration {
 	public Docket api() {
 		return new Docket(DocumentationType.SWAGGER_2)
 				.select()
-				.apis(RequestHandlerSelectors.basePackage("com.ykb.tdp.testsuite.controller"))
+				.apis(Predicates
+						.or(RequestHandlerSelectors.basePackage("com.ykb.tdp.testsuite.controller"),
+							RequestHandlerSelectors.basePackage("org.springframework.boot.actuate")))
 				.paths(PathSelectors.any())
 				.build()
 				.securitySchemes(securitySchemes())
@@ -64,22 +79,29 @@ public class SwaggerConfiguration {
 
 	private ApiInfo apiInfo() {
 		return new ApiInfoBuilder()
-				.title("TDP Test Suite")
-				.description("Time Deposit Test Automation Suite")
+				.title(applicationTitle)
+				.description(applicationDescription)
 				.termsOfServiceUrl("https://www.todo.com/api")// TODO complete when repo is moved
 				.contact(new Contact("todo", "http://www.todo.com", "todo@todo.com"))// TODO complete when repo is moved
 				.license("Proprietary License")
 				.licenseUrl("https://www.todo.com")// TODO complete when repo is moved
-				.version("1.0.0")
+				.version(version)
 				.build();
 	}
 
 	private List<SecurityContext> securityContext() {
+		@SuppressWarnings("unchecked")
 		SecurityContext restApiSecureContext = SecurityContext
 				.builder()
 				.securityReferences(Arrays.asList(new SecurityReference(OAUTH_SCHEME_NAME, scopes)))
-				.forPaths(PathSelectors.ant("/RestApiSecure/**"))
+				.forPaths(Predicates
+						.or(SecuredPaths
+								.all()
+								.map(path -> PathSelectors.ant(SecuredPaths.patternify(path)))
+								.toArray(Predicate[]::new)))
 				.build();
+
+		;
 
 		return Collections.singletonList(restApiSecureContext);
 	}
