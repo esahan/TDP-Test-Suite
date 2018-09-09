@@ -1,16 +1,22 @@
 package com.ykb.tdp.testsuite.configuration;
 
+import static com.ykb.tdp.testsuite.security.SecuredPathProvider.securedPathsFor;
+import static com.ykb.tdp.testsuite.security.SecuredPathProvider.securedPathsForUnspecified;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
-import com.ykb.tdp.testsuite.security.SecuredPaths;
 
 import springfox.documentation.builders.ApiInfoBuilder;
 import springfox.documentation.builders.OAuthBuilder;
@@ -65,21 +71,19 @@ public class SwaggerConfiguration {
 	 */
 	@Bean
 	public Docket api() {
-		return new Docket(DocumentationType.SWAGGER_2)
-				.select()
-				.apis(Predicates
-						.or(RequestHandlerSelectors.basePackage("com.ykb.tdp.testsuite.controller"),
-							RequestHandlerSelectors.basePackage("org.springframework.boot.actuate")))
+		return new Docket(DocumentationType.SWAGGER_2).select()
+				.apis(Predicates.or(RequestHandlerSelectors.basePackage("com.ykb.tdp.testsuite.controller"),
+									RequestHandlerSelectors.basePackage("org.springframework.boot.actuate")))
 				.paths(PathSelectors.any())
 				.build()
 				.securitySchemes(securitySchemes())
 				.securityContexts(securityContext())
-				.apiInfo(apiInfo());
+				.apiInfo(apiInfo())
+				.forCodeGeneration(true);
 	}
 
 	private ApiInfo apiInfo() {
-		return new ApiInfoBuilder()
-				.title(applicationTitle)
+		return new ApiInfoBuilder().title(applicationTitle)
 				.description(applicationDescription)
 				.termsOfServiceUrl("https://www.todo.com/api")// TODO complete when repo is moved
 				.contact(new Contact("todo", "http://www.todo.com", "todo@todo.com"))// TODO complete when repo is moved
@@ -90,25 +94,43 @@ public class SwaggerConfiguration {
 	}
 
 	private List<SecurityContext> securityContext() {
-		@SuppressWarnings("unchecked")
-		SecurityContext restApiSecureContext = SecurityContext
-				.builder()
+		List<SecurityContext> contexts = Stream.of(HttpMethod.values()).map(this::securityContextFor).filter(Objects::nonNull).collect(Collectors.toList());
+		
+		SecurityContext securityContextForUnspecified = securityContextForUnspecified();
+		if (securityContextForUnspecified != null) {
+			contexts.add(securityContextForUnspecified);
+		}
+
+		return contexts;
+	}
+
+	@SuppressWarnings("unchecked")
+	private SecurityContext securityContextForUnspecified() {
+		String[] securedPaths = securedPathsForUnspecified();
+		if (securedPaths == null || securedPaths.length == 0) {
+			return null;
+		}
+		return SecurityContext.builder()
 				.securityReferences(Arrays.asList(new SecurityReference(OAUTH_SCHEME_NAME, scopes)))
-				.forPaths(Predicates
-						.or(SecuredPaths
-								.all()
-								.map(path -> PathSelectors.ant(SecuredPaths.patternify(path)))
-								.toArray(Predicate[]::new)))
+				.forPaths(Predicates.or(Stream.of(securedPaths).map(path -> PathSelectors.ant(path)).toArray(Predicate[]::new)))
 				.build();
+	}
 
-		;
-
-		return Collections.singletonList(restApiSecureContext);
+	@SuppressWarnings("unchecked")
+	private SecurityContext securityContextFor(HttpMethod method) {
+		String[] securedPaths = securedPathsFor(method);
+		if (securedPaths == null || securedPaths.length == 0) {
+			return null;
+		}
+		return SecurityContext.builder()
+				.securityReferences(Arrays.asList(new SecurityReference(OAUTH_SCHEME_NAME, scopes)))
+				.forPaths(Predicates.or(Stream.of(securedPaths).map(path -> PathSelectors.ant(path)).toArray(Predicate[]::new)))
+				.forHttpMethods(Predicates.equalTo(method))
+				.build();
 	}
 
 	private List<? extends SecurityScheme> securitySchemes() {
-		SecurityScheme oauth = new OAuthBuilder()
-				.name(OAUTH_SCHEME_NAME)
+		SecurityScheme oauth = new OAuthBuilder().name(OAUTH_SCHEME_NAME)
 				.grantTypes(Arrays.asList(new ResourceOwnerPasswordCredentialsGrant(contextPath + "/oauth/token")))
 				.scopes(Arrays.asList(scopes))
 				.build();
